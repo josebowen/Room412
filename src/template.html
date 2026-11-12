@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room 412</title>
+<meta name="description" content="A nursing clinical judgment demo. Read the monitor, look at the patient, score the vitals with MEWS and decide when to call rapid response.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>/*CSS*/</style>
+</head>
+<body data-state="title">
+<canvas id="gl" role="img" tabindex="0" aria-label="3D view of a hospital room with a patient in bed and a bedside monitor. Drag to look around."></canvas>
+
+<main id="title">
+  <div class="in">
+    <p class="kick">Nursing · clinical judgment</p>
+    <h1>Room <em>412</em></h1>
+    <p class="sub">Your patient is two days out from surgery. Read the monitor. Look at the patient. Score the vitals. Decide when to call for help.</p>
+    <div class="row"><button class="btn pri big" data-act="begin">Start the shift</button><button class="btn" data-act="about">About this demo</button></div>
+    <p class="foot">About 7 minutes · Scoring from MEWS (Subbe et al. 2001) · Calling criteria from AHRQ · A teaching demo, not clinical guidance</p>
+  </div>
+</main>
+
+<header id="top">
+  <span class="brand">Room 412</span>
+  <span id="clock" role="status" aria-label="Shift time"></span>
+  <ol id="steps" aria-label="Progress"><li>Report</li><li>Rounds</li><li>Call</li><li>Debrief</li></ol>
+  <span class="sp"></span>
+  <div class="tools"><button class="btn sm" id="soundBtn" data-act="sound" aria-pressed="false">Sound off</button><button class="btn sm" data-act="about">About</button></div>
+</header>
+
+<section id="monwrap" aria-label="Bedside monitor"><div id="monslot"></div><p id="monsr" class="sr" role="status"></p></section>
+<div id="say" role="status"></div>
+<div id="views" role="group" aria-label="Camera"><button class="chip" data-view="room">Room</button><button class="chip" data-view="bed">Bedside</button><button class="chip" data-view="face">Face</button></div>
+
+<aside id="panel" aria-label="Step panel"><div id="panelBody" aria-live="polite"></div></aside>
+
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="aboutH" hidden>
+  <div class="card"><button class="btn sm" id="modalClose" data-act="closeAbout">Close</button><div id="aboutBody"></div></div>
+</div>
+<script>/*JS*/</script>
+</body>
+</html>
