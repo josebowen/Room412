@@ -160,9 +160,10 @@ function vRound() {
     <div class="row"><button class="btn pri" data-act="toScore">Done. Score the vitals</button></div>`;
   if (S.sub === 'score') return `<p class="kick">${head} · Analyze cues</p><h2>Score the vitals</h2>
     <p class="hint">Give each vital 0 to 3 points. Read the numbers off the monitor: heart rate, blood pressure, respiratory rate, temperature. Alertness comes from your bedside check: ${fill(R.mind, p).split('.')[0].toLowerCase()}.</p>
+    <div class="row" style="margin:0 0 14px"><button class="btn sm" data-act="mews">Review how MEWS works</button></div>
     ${PARAMS.map((q) => `<fieldset class="q"><legend>${q.label}</legend><div class="seg">${[0, 1, 2, 3].map((n) => `<label><input type="radio" name="s_${q.k}" value="${n}" ${L.scores[q.k] === n ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div></fieldset>`).join('')}
     <div class="tot"><span>Your MEWS</span><b id="tot">${allScored(L.scores) ? sumScores(L.scores) : '·'}</b></div>
-    <div class="row"><button class="btn pri" data-act="toAct" ${allScored(L.scores) ? '' : 'disabled'}>Lock the score</button><button class="btn sm" data-act="mews">Review how MEWS works</button><button class="btn ghost sm" data-act="showScore">Show me</button></div>`;
+    <div class="row"><button class="btn pri" data-act="toAct" ${allScored(L.scores) ? '' : 'disabled'}>Lock the score</button><button class="btn ghost sm" data-act="showScore">Show me</button></div>`;
   if (S.sub === 'act') return `<p class="kick">${head} · Take action</p><h2>You scored ${sumScores(L.scores)}. What now?</h2>
     <fieldset class="q"><legend>Choose one</legend><div class="opt">${ACTIONS.map((x) => `<label><input type="radio" name="act" value="${x.k}" ${L.action === x.k ? 'checked' : ''}><span>${x.t}</span></label>`).join('')}</div></fieldset>
     <div class="row"><button class="btn pri" data-act="toFb" ${L.action ? '' : 'disabled'}>Commit</button></div>`;
