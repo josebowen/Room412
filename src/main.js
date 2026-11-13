@@ -26,7 +26,7 @@ const P = () => PATIENTS[S.p];
 const mon = document.createElement('canvas'); mon.width = 960; mon.height = 540; mon.setAttribute('aria-hidden', 'true'); $('#monslot').appendChild(mon);
 const mg = mon.getContext('2d');
 const disp = { hr: 86, sbp: 126, dbp: 74, rr: 16, temp: 37.1, spo2: 97 }; let dispT = { ...ROUNDS[0].v }, nibpTime = '07:00';
-const WX = 16, WW = 560, waves = { ecg: new Float32Array(WW), pleth: new Float32Array(WW), resp: new Float32Array(WW) }; let wcur = 0, wacc = 0, hrPh = 0, rrPh = 0, lastBeat = 0;
+const WX = 16, WW = 470, waves = { ecg: new Float32Array(WW), pleth: new Float32Array(WW), resp: new Float32Array(WW) }; let wcur = 0, wacc = 0, hrPh = 0, rrPh = 0, lastBeat = 0;
 const g2 = (p, c, w) => Math.exp(-(((p - c) / w) ** 2));
 const ecgF = (p) => 0.12 * g2(p, 0.18, 0.025) - 0.12 * g2(p, 0.265, 0.008) + g2(p, 0.28, 0.009) - 0.22 * g2(p, 0.297, 0.009) + 0.28 * g2(p, 0.48, 0.045);
 const plethF = (p) => g2(p, 0.36, 0.09) + 0.42 * g2(p, 0.62, 0.13);
@@ -50,18 +50,17 @@ function drawMonitor() {
   const g = mg; g.fillStyle = '#04090a'; g.fillRect(0, 0, 960, 540);
   g.fillStyle = '#0d1c1f'; g.fillRect(0, 0, 960, 40); g.fillStyle = '#9fc4c1'; g.font = F(20, 600); g.textBaseline = 'middle'; g.textAlign = 'left';
   const p = P(); g.fillText(`412  ${p.name.split(' ')[1].toUpperCase()}, ${p.name[0]}   ${p.age} y`, 16, 21); g.textAlign = 'right'; g.fillText(hhmm(S.clock) + '   ADULT', 944, 21);
-  g.strokeStyle = 'rgba(160,200,200,.14)'; g.lineWidth = 1; for (const y of [180, 290, 400]) { g.beginPath(); g.moveTo(0, y); g.lineTo(960, y); g.stroke(); } g.beginPath(); g.moveTo(596, 40); g.lineTo(596, 400); g.stroke(); g.beginPath(); g.moveTo(480, 400); g.lineTo(480, 540); g.stroke();
+  g.strokeStyle = 'rgba(160,200,200,.16)'; g.lineWidth = 1; for (const y of [140, 240, 340, 440]) { g.beginPath(); g.moveTo(502, y); g.lineTo(960, y); g.stroke(); } for (const y of [207, 373]) { g.beginPath(); g.moveTo(0, y); g.lineTo(502, y); g.stroke(); } g.beginPath(); g.moveTo(502, 40); g.lineTo(502, 540); g.stroke();
   const GRN = '#3dff7c', CYN = '#52d9ff', YEL = '#ffe24a', WHT = '#f4f7f7', ORG = '#ffb057';
-  trace(waves.ecg, 62, 96, GRN); trace(waves.pleth, 204, 70, CYN); trace(waves.resp, 314, 68, YEL);
-  g.textAlign = 'left'; g.font = F(17, 600); g.fillStyle = GRN; g.fillText('ECG II', 16, 56); g.fillStyle = CYN; g.fillText('PLETH', 16, 196); g.fillStyle = YEL; g.fillText('RESP', 16, 306);
-  const big = (label, unit, val, color, y, size) => { g.fillStyle = color; g.textAlign = 'left'; g.font = F(24, 700); g.fillText(label, 612, y - size * 0.34); g.font = F(16, 500); g.fillText(unit, 612, y - size * 0.34 + 26); g.textAlign = 'right'; g.font = F(size, 700); g.fillText(val, 944, y + 4); };
-  big('HR', 'bpm', String(Math.round(disp.hr)), GRN, 112, 124);
-  big('SpO2', '% room air', String(Math.round(disp.spo2)), CYN, 238, 96);
-  big('RR', 'per min', String(Math.round(disp.rr)), YEL, 348, 96);
-  g.fillStyle = WHT; g.textAlign = 'left'; g.font = F(24, 700); g.fillText('NIBP', 16, 428); g.font = F(16, 500); g.fillText('mmHg  at ' + nibpTime, 84, 429);
-  g.font = F(92, 700); g.fillText(`${Math.round(disp.sbp)}/${Math.round(disp.dbp)}`, 16, 488);
-  g.fillStyle = ORG; g.font = F(24, 700); g.fillText('TEMP', 498, 428); g.font = F(84, 700); g.textAlign = 'left'; const f = cToF(disp.temp).toFixed(1); g.fillText(f, 498, 488); const fw = g.measureText(f).width; g.font = F(34, 700); g.fillText('°F', 502 + fw, 472);
-  g.textAlign = 'right'; g.font = F(34, 600); g.fillText(disp.temp.toFixed(1) + '°C', 944, 500);
+  trace(waves.ecg, 70, 110, GRN); trace(waves.pleth, 240, 100, CYN); trace(waves.resp, 406, 100, YEL);
+  g.textAlign = 'left'; g.font = F(17, 600); g.fillStyle = GRN; g.fillText('ECG II', 16, 58); g.fillStyle = CYN; g.fillText('PLETH', 16, 224); g.fillStyle = YEL; g.fillText('RESP', 16, 390);
+  // all five vitals in one column, same size, in the order the nurse scores them
+  const row = (i, label, unit, val, color, size = 84) => { const y = 90 + i * 100; g.fillStyle = color; g.textAlign = 'left'; g.font = F(27, 700); g.fillText(label, 520, y - 18); g.font = F(17, 500); g.fillText(unit, 520, y + 14); g.textAlign = 'right'; g.font = F(size, 700); g.fillText(val, 944, y + 4); };
+  row(0, 'HR', 'bpm', String(Math.round(disp.hr)), GRN);
+  row(1, 'BP', 'mmHg at ' + nibpTime, `${Math.round(disp.sbp)}/${Math.round(disp.dbp)}`, WHT);
+  row(2, 'RR', 'per min', String(Math.round(disp.rr)), YEL);
+  row(3, 'TEMP', disp.temp.toFixed(1) + '°C', cToF(disp.temp).toFixed(1) + '°F', ORG, 74);
+  row(4, 'SpO2', '% room air', String(Math.round(disp.spo2)), CYN);
 }
 const hhmm = (h) => { const m = Math.round((h % 1) * 60); const H = Math.floor(h) + (m === 60 ? 1 : 0); return String(H).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
 
@@ -160,11 +159,10 @@ function vRound() {
     <fieldset class="q"><legend>Flag every finding that concerns you. Flag none if none do.</legend><div class="opt">${cueOrder(S.r).map((i) => `<label><input type="checkbox" name="cue" value="${i}" ${L.flags.includes(i) ? 'checked' : ''}><span>${fill(R.cues[i].t, p)}</span></label>`).join('')}</div></fieldset>
     <div class="row"><button class="btn pri" data-act="toScore">Done. Score the vitals</button></div>`;
   if (S.sub === 'score') return `<p class="kick">${head} · Analyze cues</p><h2>Score the vitals</h2>
-    <p class="hint">Read each number off the monitor. Alertness comes from your bedside check: ${fill(R.mind, p).split('.')[0].toLowerCase()}.</p>
-    ${PARAMS.map((q) => `<fieldset class="q"><legend>${q.label}</legend><p class="band">${CHART[q.k]}</p><div class="seg">${[0, 1, 2, 3].map((n) => `<label><input type="radio" name="s_${q.k}" value="${n}" ${L.scores[q.k] === n ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div></fieldset>`).join('')}
+    <p class="hint">Give each vital 0 to 3 points. Read the numbers off the monitor: heart rate, blood pressure, respiratory rate, temperature. Alertness comes from your bedside check: ${fill(R.mind, p).split('.')[0].toLowerCase()}.</p>
+    ${PARAMS.map((q) => `<fieldset class="q"><legend>${q.label}</legend><div class="seg">${[0, 1, 2, 3].map((n) => `<label><input type="radio" name="s_${q.k}" value="${n}" ${L.scores[q.k] === n ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div></fieldset>`).join('')}
     <div class="tot"><span>Your MEWS</span><b id="tot">${allScored(L.scores) ? sumScores(L.scores) : '·'}</b></div>
-    <div class="row"><button class="btn pri" data-act="toAct" ${allScored(L.scores) ? '' : 'disabled'}>Lock the score</button><button class="btn ghost sm" data-act="showScore">Show me</button></div>
-    <p class="src">MEWS table: ${cite('subbe')}</p>`;
+    <div class="row"><button class="btn pri" data-act="toAct" ${allScored(L.scores) ? '' : 'disabled'}>Lock the score</button><button class="btn sm" data-act="mews">Review how MEWS works</button><button class="btn ghost sm" data-act="showScore">Show me</button></div>`;
   if (S.sub === 'act') return `<p class="kick">${head} · Take action</p><h2>You scored ${sumScores(L.scores)}. What now?</h2>
     <fieldset class="q"><legend>Choose one</legend><div class="opt">${ACTIONS.map((x) => `<label><input type="radio" name="act" value="${x.k}" ${L.action === x.k ? 'checked' : ''}><span>${x.t}</span></label>`).join('')}</div></fieldset>
     <div class="row"><button class="btn pri" data-act="toFb" ${L.action ? '' : 'disabled'}>Commit</button></div>`;
@@ -246,6 +244,14 @@ function vDebrief() {
     <p class="src">The vitals are written for this demo and model early sepsis after abdominal surgery. What the team does next is outside the demo. No nurse educator has reviewed this script.</p>
     <div class="row"><button class="btn pri" data-act="again">Play again with another patient</button><button class="btn" data-act="about">Sources and method</button></div>`;
 }
+function vMews() {
+  return `<h2 id="aboutH">How MEWS works</h2>
+  <p>The Modified Early Warning Score gives each of five vitals 0 to 3 points. Add the five numbers. A higher total means a sicker patient.</p>
+  <div class="tw"><table class="mews"><thead><tr><th>Vital</th><th>Points</th></tr></thead><tbody>${PARAMS.map((q) => `<tr><td><b>${q.label}</b></td><td>${CHART[q.k]}</td></tr>`).join('')}</tbody></table></div>
+  <h3>Unit policy in this demo</h3>
+  <ul><li>0 to 2: routine checks.</li><li>3 or 4: tell the charge nurse and recheck within the hour.</li><li>5 or more: call the rapid response team.</li><li>Any time: call if you are worried about the patient.</li></ul>
+  <p class="src">Table: ${cite('subbe')}. Oxygen saturation and urine output are not in this version of MEWS.</p>`;
+}
 function vAbout() {
   return `<h2 id="aboutH">About Room 412</h2>
   <p>A 7 minute demo of how a simulation can let nursing students practice clinical judgment on a deteriorating patient. It was built with AI for faculty workshops. It is not clinical guidance, and no nurse educator has reviewed the script.</p>
@@ -288,6 +294,7 @@ const ACT = {
   debrief: () => go('debrief'),
   again: () => { S.p = (S.p + 1) % PATIENTS.length; room.setPatient(P()); S.seed += 1; S.log = []; S.called = null; go('choose'); },
   about: () => { $('#aboutBody').innerHTML = vAbout(); $('#modal').hidden = false; $('#modalClose').focus(); },
+  mews: () => { $('#aboutBody').innerHTML = vMews(); $('#modal').hidden = false; $('#modalClose').focus(); },
   closeAbout: () => { $('#modal').hidden = true; },
   sound: () => { S.sound = !S.sound; if (S.sound && !actx) actx = new (window.AudioContext || window.webkitAudioContext)(); const b = $('#soundBtn'); b.textContent = S.sound ? 'Sound on' : 'Sound off'; b.setAttribute('aria-pressed', String(S.sound)); },
 };
