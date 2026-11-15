@@ -9,6 +9,10 @@ export const SRC = {
   douw: { s: 'Douw et al. 2015', t: "Douw G, et al. Nurses' worry or concern and early recognition of deteriorating patients on general wards in acute care hospitals: a systematic review. Critical Care 2015;19:230.", u: 'https://doi.org/10.1186/s13054-015-0950-5' },
   sbar: { s: 'AHRQ TeamSTEPPS', t: 'Agency for Healthcare Research and Quality. TeamSTEPPS Tool: SBAR.', u: 'https://www.ahrq.gov/teamstepps-program/curriculum/communication/tools/sbar.html' },
   skin: { s: 'Nursing Physical Assessment 6.7', t: 'Nursing Physical Assessment, section 6.7 Skin: Inspection. College of DuPage, Pressbooks.', u: 'https://cod.pressbooks.pub/nursingphysicalassessment/chapter/skin-inspection/' },
+  sccm: { s: 'SCCM 2024', t: 'Honarmand K, Wax RS, Penoyer D, et al. Society of Critical Care Medicine guidelines on recognizing and responding to clinical deterioration outside the ICU: 2023. Crit Care Med 2024;52(2):314-330.', u: 'https://sccm.org/Clinical-Resources/Guidelines/Guidelines/Recognizing-Clinical-Deterioration-Outside-ICU' },
+  jc: { s: 'Joint Commission', t: 'The Joint Commission. Hospital standard NPG.01.05.02: the hospital recognizes and responds to changes in a patient\'s condition.', u: 'https://digitalassets.jointcommission.org/api/public/content/9ca80055182b4274842a5780a94f2c82' },
+  chua: { s: 'Chua et al. 2017', t: 'Chua WL, et al. Factors influencing the activation of the rapid response system for clinically deteriorating patients by frontline ward clinicians: a systematic review. Int J Qual Health Care 2017;29(8):981-998.', u: 'https://doi.org/10.1093/intqhc/mzx149' },
+  hecht: { s: 'Hecht et al. 2024', t: 'Hecht JD, Yoder LH, Danesh V, Heitkemper EM. A systematic review of the facilitators and barriers to rapid response team activation. Worldviews Evid Based Nurs 2024.', u: 'https://doi.org/10.1111/wvn.12700' },
   sjoding: { s: 'Sjoding et al. 2020', t: 'Sjoding MW, et al. Racial bias in pulse oximetry measurement. N Engl J Med 2020;383:2477-2478.', u: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC7808260/' },
 };
 export const cite = (k) => `<a class="cite" href="${SRC[k].u}" target="_blank" rel="noopener">${SRC[k].s}</a>`;
@@ -125,3 +129,49 @@ export const SBAR_NAME = { S: 'Situation', B: 'Background', A: 'Assessment', R: 
 export const SBAR_DEF = { S: 'what is happening with the patient now', B: 'the clinical background', A: 'what the caller thinks the problem is', R: 'what the caller recommends or requests' };
 export const cap = (s) => s[0].toUpperCase() + s.slice(1);
 export const fill = (s, p) => s.replace(/\{he\}/g, p.he).replace(/\{his\}/g, p.his).replace(/\{him\}/g, p.him).replace(/\{N\}/g, p.N);
+
+// ---------- thinking made visible ----------
+export const OI = [
+  { k: 'O', t: 'Heart rate is 102.' },
+  { k: 'I', t: 'The patient is anxious about going home.' },
+  { k: 'O', t: 'The patient asked twice what day it is.' },
+  { k: 'I', t: 'The patient is becoming septic.' },
+];
+export const OI_NAME = { O: 'Observation', I: 'Inference' };
+export const PLANS = [
+  { k: 'score', t: 'Follow the MEWS total and the unit policy.', short: 'the MEWS total' },
+  { k: 'trend', t: 'Compare each set with this patient\'s earlier ones.', short: 'change over time' },
+  { k: 'patient', t: 'Go by how the patient looks and what they say.', short: 'the patient at the bedside' },
+  { k: 'all', t: 'Weigh the score, the trend and the patient together.', short: 'score, trend and patient together' },
+];
+export const WHYS = [
+  { k: 'score', t: 'The MEWS total', short: 'MEWS total' },
+  { k: 'trend', t: 'A change since the last round', short: 'a change' },
+  { k: 'patient', t: 'What the patient says or how they look', short: 'the patient' },
+  { k: 'criterion', t: 'One finding that is a calling criterion', short: 'one criterion' },
+  { k: 'none', t: 'Nothing has changed', short: 'no change' },
+];
+export const CONF = ['', 'Not sure', 'Fairly sure', 'Sure'];
+export const ACTION_SHORT = { routine: 'Routine checks', charge: 'Told charge nurse', rrt: 'Called rapid response' };
+export const FAQ = (c) => [
+  ['Can a nurse call rapid response without a physician order?', `Yes, where the hospital has a rapid response system. AHRQ's primer says any staff member may call the team if a calling criterion is met. ${c('ahrq')} A 2008 Joint Commission patient safety goal required hospitals to let staff directly request help from a specially trained individual when a patient appears to be worsening. ${c('ahrq')} The current Joint Commission hospital standard requires written criteria for early warning signs and the action to take. It notes that hospitals are not required to create a rapid response team to meet it. ${c('jc')} A 2024 Society of Critical Care Medicine guideline recommends hospital wide rapid response systems with explicit activation criteria (strong recommendation, moderate certainty). ${c('sccm')} Each hospital writes its own policy.`],
+  ['Do I have to call the physician first?', `Policies differ. AHRQ's primer says any staff member may call the team when a criterion is met. ${c('ahrq')} In one survey of 293 nurses at a Canadian teaching hospital, 75.9% said they would call the attending physician before activating the team. ${c('chua')}`],
+  ['What if I call and the patient turns out to be fine?', `Fear of criticism is a documented barrier. In the same Canadian survey, 15.4% of nurses reported reluctance to call for that reason, and 48% said they would call for a patient they were worried about who had normal vital signs. ${c('chua')} A 2024 review of US studies reports that support from hospital leaders and physicians helped nurses call and became a barrier when absent. ${c('hecht')} A staff member's significant concern is one of the typical calling criteria AHRQ lists. ${c('ahrq')}`],
+  ['Who comes when I call?', `It varies by hospital. In AHRQ's table of models, the rapid response team lists a critical care nurse and a respiratory therapist, and the medical emergency team lists physicians and nurses. ${c('ahrq')} The 2024 SCCM guideline makes no recommendation on who should lead the team. ${c('sccm')}`],
+  ['Can the patient or the family call?', `In some hospitals. The 2024 SCCM guideline says patients, families and care partners can recognize subtle changes and should be empowered to alert staff, including the rapid response system. ${c('sccm')}`],
+  ['Why did a temperature of 101.1°F score 0?', `MEWS gives 0 points from 95.0 to 101.1°F (35 to 38.4°C). The 2 point band starts at 101.3°F (38.5°C). ${c('subbe')} CDC lists fever among the signs of sepsis. ${c('cdc')}`],
+  ['Why did new confusion score 0?', `AVPU has four levels: Alert, responds to Voice, responds to Pain, Unresponsive. A patient who is awake and confused is Alert, so MEWS gives 0. ${c('subbe')} An acute change in mental status is a separate calling criterion on AHRQ's list. ${c('ahrq')}`],
+  ['Is MEWS a sepsis test?', `No. It is a general early warning score. The Surviving Sepsis Campaign names MEWS among the tools used for sepsis screening. It says neither SIRS nor qSOFA is an ideal screening tool and the bedside clinician needs to understand the limits of each. ${c('ssc')}`],
+  ['What happens after I call?', `The team assesses the patient at the bedside. For suspected sepsis, the Surviving Sepsis Campaign says treatment should begin immediately and suggests measuring blood lactate. ${c('ssc')} What the team does next is outside this demo.`],
+  ['Is my hospital\'s score the same as this one?', `Maybe not. Hospitals use different versions of MEWS and different trigger scores. This version has no oxygen saturation or urine output row. The threshold of 5 comes from one UK hospital in 2000. ${c('subbe')}`],
+  ['Do rapid response teams save lives?', `The evidence is mixed. AHRQ's primer says rapid response systems slightly reduce unexpected cardiac arrests on wards and do not change overall hospital mortality. ${c('ahrq')} The 2024 SCCM guideline still recommends them, with moderate certainty. ${c('sccm')}`],
+  ['Can I trust the pulse oximeter?', `Not equally for every patient. In two cohorts, when the pulse oximeter read 92 to 96%, arterial saturation was under 88% in 11.7% and 17.0% of measurements in Black patients and 3.6% and 6.2% in White patients. ${c('sjoding')}`],
+];
+// published layout: one row per vital, columns score 3 2 1 0 1 2 3
+export const GRID = [
+  ['Systolic BP (mmHg)', '70 or less', '71 to 80', '81 to 100', '101 to 199', '', '200 or more', ''],
+  ['Heart rate (bpm)', '', '40 or less', '41 to 50', '51 to 100', '101 to 110', '111 to 129', '130 or more'],
+  ['Respiratory rate (per min)', '', 'Under 9', '', '9 to 14', '15 to 20', '21 to 29', '30 or more'],
+  ['Temperature', '', 'Under 95.0°F (35°C)', '', '95.0 to 101.1°F (35 to 38.4°C)', '', '101.3°F (38.5°C) or more', ''],
+  ['Alertness (AVPU)', '', '', '', 'Alert', 'Responds to Voice', 'Responds to Pain', 'Unresponsive'],
+];

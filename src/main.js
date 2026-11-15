@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { buildRoom } from './scene.js';
 import { clamp, lerp, mulberry } from './fx.js';
-import { SRC, cite, PATIENTS, SKIN, ROUNDS, ACTIONS, ACTION_NAME, PARAMS, CHART, CRIT_NAME, SBAR, SBAR_NAME, SBAR_DEF, cap, fill } from './content.js';
+import { SRC, cite, PATIENTS, SKIN, ROUNDS, ACTIONS, ACTION_NAME, PARAMS, CHART, CRIT_NAME, SBAR, SBAR_NAME, SBAR_DEF, cap, fill, OI, OI_NAME, PLANS, WHYS, CONF, ACTION_SHORT, FAQ, GRID } from './content.js';
 import { mews, assess, judge, cToF, AVPU } from './model.js';
 
 const qs = new URLSearchParams(location.search);
@@ -19,8 +19,9 @@ const A = ROUNDS.map((r) => assess(r.v)); // computed once from the scripted vit
 
 // ---------- state ----------
 const S = { step: 'title', r: 0, sub: 'look', p: 0, log: [], called: null, calledBy: null, sbar: null, sbarDone: false, sound: false, seed: 412, view: 'room', clock: 7, clockT: 7 };
-const newLog = () => ({ flags: [], scores: {}, shown: false, action: null, verdict: null });
+const newLog = () => ({ flags: [], scores: {}, shown: false, action: null, why: null, conf: 0, note: '', verdict: null });
 const P = () => PATIENTS[S.p];
+Object.assign(S, { oi: [null, null, null, null], oiDone: false, plan: null });
 
 // ---------- monitor ----------
 const mon = document.createElement('canvas'); mon.width = 960; mon.height = 540; mon.setAttribute('aria-hidden', 'true'); $('#monslot').appendChild(mon);
@@ -122,17 +123,18 @@ function go(step, r, sub) {
   S.step = step; if (r != null) S.r = r; if (sub) S.sub = sub;
   body.dataset.state = step; const R = ROUNDS[S.r];
   if (step === 'title') { setView('room'); say(''); }
-  if (step === 'choose' || step === 'report') { S.clockT = 7; dispT = { ...ROUNDS[0].v }; nibpTime = '07:00'; room.setLook(ROUNDS[0].look, ROUNDS[0].v.rr); if (S.view === 'room' && step === 'report') setView('bed'); if (step === 'choose') setView('bed'); say(''); }
+  if (step === 'choose' || step === 'report' || step === 'prep') { S.clockT = 7; dispT = { ...ROUNDS[0].v }; nibpTime = '07:00'; room.setLook(ROUNDS[0].look, ROUNDS[0].v.rr); if (S.view === 'room' && step === 'report') setView('bed'); if (step === 'choose') setView('bed'); say(''); }
   if (step === 'round') { if (!S.log[S.r]) S.log[S.r] = newLog(); S.clockT = TIMES[S.r]; dispT = { ...R.v }; nibpTime = R.time; room.setLook(R.look, R.v.rr); say(S.sub === 'look' ? R.says : ''); if (S.view === 'room') setView('bed'); }
   if (step === 'sbar' || step === 'debrief') say('');
-  const order = ['report', 'round', 'sbar', 'debrief'], ci = step === 'choose' ? 0 : order.indexOf(step);
+  const order = ['report', 'round', 'sbar', 'debrief'], ci = step === 'choose' || step === 'prep' ? 0 : order.indexOf(step);
+  renderTrail();
   document.querySelectorAll('#steps li').forEach((li, i) => { li.className = i === ci ? 'cur' : i < ci ? 'done' : ''; });
   render(); const h = panelBody.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } $('#panel').scrollTop = 0;
   $('#monsr').textContent = step === 'round' ? `Monitor at ${R.time}. Heart rate ${R.v.hr}. Blood pressure ${R.v.sbp} over ${R.v.dbp}. Respiratory rate ${R.v.rr}. Oxygen saturation ${R.v.spo2} percent on room air. Temperature ${tempStr(R.v.temp)}.` : '';
 }
 
 // ---------- panels ----------
-function render() { panelBody.innerHTML = ({ choose: vChoose, report: vReport, round: vRound, sbar: vSbar, debrief: vDebrief }[S.step] || (() => ''))(); }
+function render() { panelBody.innerHTML = ({ choose: vChoose, report: vReport, prep: vPrep, round: vRound, sbar: vSbar, debrief: vDebrief }[S.step] || (() => ''))(); }
 function vChoose() {
   return `<p class="kick">Before report</p><h2>Who is in 412?</h2>
   <p>Same surgery, same vitals, same script. Skin signs read differently on different skin, so the bedside notes change with the patient.</p>
@@ -149,7 +151,19 @@ function vReport() {
   <h3>Unit policy in this demo</h3>
   <ul class="pol"><li><b>MEWS 0 to 2</b><span>Routine checks.</span></li><li><b>MEWS 3 or 4</b><span>Tell the charge nurse. Recheck within the hour.</span></li><li><b>MEWS 5 or more</b><span>Call the rapid response team.</span></li><li><b>Any time</b><span>Call if you are worried about the patient.</span></li></ul>
   <p class="src">Recognize cues, analyze cues and take action are three of the six skills in the NCSBN Clinical Judgment Measurement Model. ${cite('ncsbn')} The threshold of 5 is from ${cite('subbe')}. Staff concern is a typical calling criterion in ${cite('ahrq')}. Hospitals set their own policies.</p>
-  <div class="row"><button class="btn pri" data-act="startRounds">Start the 08:00 round</button><button class="btn ghost sm" data-act="choose">Change patient</button></div>`;
+  <div class="row"><button class="btn pri" data-act="prep">Next</button><button class="btn sm" data-act="faq">Can a nurse really call?</button><button class="btn ghost sm" data-act="choose">Change patient</button></div>`;
+}
+function oiOrder() { return shuffled(4, S.seed + 31); }
+function vPrep() {
+  const done = S.oiDone, full = S.oi.every(Boolean);
+  const items = oiOrder().map((i) => { const it = OI[i], mine = S.oi[i], ok = mine === it.k; return `<div class="sb ${done ? (ok ? 'ok' : 'no') : ''}"><p>${it.t}</p><fieldset class="q" style="margin:0"><legend class="sr">Observation or inference?</legend><div class="seg two">${['O', 'I'].map((k) => `<label><input type="radio" name="oi_${i}" value="${k}" ${mine === k ? 'checked' : ''} ${done ? 'disabled' : ''}><span>${OI_NAME[k]}</span></label>`).join('')}</div></fieldset>${done ? `<small>${OI_NAME[it.k]}.${ok ? '' : ` You chose ${OI_NAME[mine] ? OI_NAME[mine].toLowerCase() : 'nothing'}.`}</small>` : ''}</div>`; }).join('');
+  return `<p class="kick">07:10 · Before you go in</p><h2>How will you think?</h2>
+  <p>An observation is what you see, hear or measure. An inference is what you conclude from it. Sort these four.</p>
+  ${items}
+  ${done ? `<p class="fb">Recognizing cues is collecting observations. Analyzing cues is linking them to a possible problem. ${cite('openstax')} In an SBAR call the Assessment is your inference. The rest is observation.</p>
+  <fieldset class="q"><legend>What is your plan for deciding when to call?</legend><div class="opt">${PLANS.map((x) => `<label><input type="radio" name="plan" value="${x.k}" ${S.plan === x.k ? 'checked' : ''}><span>${x.t}</span></label>`).join('')}</div></fieldset>
+  <p class="hint">Not scored. The debrief sets your plan beside the reasons you give each round.</p>
+  <div class="row"><button class="btn pri" data-act="startRounds" ${S.plan ? '' : 'disabled'}>Start the 08:00 round</button></div>` : `<div class="row"><button class="btn pri" data-act="oiCheck" ${full ? '' : 'disabled'}>Check</button><button class="btn ghost sm" data-act="oiShow">Show me</button></div>`}`;
 }
 function cueOrder(r) { return shuffled(ROUNDS[r].cues.length, S.seed + r * 7); }
 function vRound() {
@@ -166,7 +180,10 @@ function vRound() {
     <div class="row"><button class="btn pri" data-act="toAct" ${allScored(L.scores) ? '' : 'disabled'}>Lock the score</button><button class="btn ghost sm" data-act="showScore">Show me</button></div>`;
   if (S.sub === 'act') return `<p class="kick">${head} · Take action</p><h2>You scored ${sumScores(L.scores)}. What now?</h2>
     <fieldset class="q"><legend>Choose one</legend><div class="opt">${ACTIONS.map((x) => `<label><input type="radio" name="act" value="${x.k}" ${L.action === x.k ? 'checked' : ''}><span>${x.t}</span></label>`).join('')}</div></fieldset>
-    <div class="row"><button class="btn pri" data-act="toFb" ${L.action ? '' : 'disabled'}>Commit</button></div>`;
+    <fieldset class="q"><legend>What is driving your decision most?</legend><div class="opt tight">${WHYS.map((x) => `<label><input type="radio" name="why" value="${x.k}" ${L.why === x.k ? 'checked' : ''}><span>${x.t}</span></label>`).join('')}</div></fieldset>
+    <fieldset class="q"><legend>How sure are you?</legend><div class="seg three">${[1, 2, 3].map((n) => `<label><input type="radio" name="conf" value="${n}" ${L.conf === n ? 'checked' : ''}><span>${CONF[n]}</span></label>`).join('')}</div></fieldset>
+    <label class="note"><span>Your note in the chart, one sentence. Optional and not graded.</span><input type="text" name="note" maxlength="160" value="${esc(L.note).replace(/"/g, '&quot;')}" placeholder="What did you see and what did you do?"></label>
+    <div class="row"><button class="btn pri" data-act="toFb" ${L.action && L.why && L.conf ? '' : 'disabled'}>Commit</button></div>`;
   // feedback
   const rows = PARAMS.map((q) => { const mine = L.scores[q.k], ok = mine === a.parts[q.k]; return `<tr><td>${q.label}</td><td>${valStr(q.k, R.v)}</td><td>${a.parts[q.k]}</td><td class="${ok ? 'y' : 'x'}">${L.shown ? 'shown' : mine}</td></tr>`; }).join('');
   const cues = R.cues.map((c, i) => { const mine = L.flags.includes(i), ok = mine === c.flag; return `<li class="${ok ? 'ok' : 'no'}"><span class="mark">${ok ? '✓' : '!'}</span><div>${fill(c.t, p)}<small>${c.flag ? 'A cue.' : 'Not a cue.'} ${mine ? 'You flagged it.' : 'You did not flag it.'} ${fill(c.why, p)} ${c.src ? cite(c.src) : ''}</small></div></li>`; }).join('');
@@ -175,9 +192,45 @@ function vRound() {
   return `<p class="kick">${head} · Feedback</p><h2>MEWS is ${a.total}</h2>
     <div class="tw"><table><thead><tr><th>Vital</th><th>Value</th><th>Score</th><th>Yours</th></tr></thead><tbody>${rows}<tr><td><b>Total</b></td><td></td><td><b>${a.total}</b></td><td class="${sumScores(L.scores) === a.total ? 'y' : 'x'}">${L.shown ? 'shown' : sumScores(L.scores)}</td></tr></tbody></table></div>
     <p>${R.note(cite)}</p>
+    <h3>Your thinking</h3><p class="fb">${thinkText(S.r)}</p>
     <h3>Your call</h3><p class="fb ${L.verdict === 'below' || L.verdict === 'unsupported' ? 'bad' : 'good'}">${verdictText(S.r)}</p>
     <h3>Cues</h3><ul class="verdict">${cues}</ul>
     <div class="row"><button class="btn pri" data-act="next">${nextLabel}</button></div>`;
+}
+function grounds(r) {
+  const a = A[r], g = [];
+  if (a.need > 0) g.push(`the MEWS total of ${a.total}`);
+  if (a.crit.length) g.push(`a calling criterion (${a.crit.map((k) => CRIT_NAME[k]).join('; ')})`);
+  if (ROUNDS[r].v.concern) g.push('changes since the last round', 'what the patient says and how the patient looks');
+  return g;
+}
+function thinkText(r) {
+  const L = S.log[r], g = grounds(r), w = WHYS.find((x) => x.k === L.why);
+  return `You were ${CONF[L.conf].toLowerCase()}. You said your decision rested most on: ${w.t.toLowerCase()}. ${g.length ? `Grounds to act that were present this round: ${g.join('; ')}.` : 'No grounds to act were present this round.'}${L.note ? ` Your note: \u201c${esc(L.note)}\u201d` : ''}`;
+}
+function renderTrail() {
+  const el = $('#trail'); if (!el) return;
+  const rows = S.log.map((L, r) => L && L.verdict ? `<li><b>${ROUNDS[r].time}</b><span>MEWS ${L.shown ? A[r].total : sumScores(L.scores)}</span><span>${ACTION_SHORT[L.action]}</span><em>${WHYS.find((x) => x.k === L.why).short} · ${CONF[L.conf].toLowerCase()}</em></li>` : '').join('');
+  el.innerHTML = rows ? `<p>Your reasoning so far</p><ol>${rows}</ol>` : ''; el.hidden = !rows || S.step === 'title' || S.step === 'choose';
+}
+function logText() {
+  const p = P(), plan = PLANS.find((x) => x.k === S.plan);
+  const lines = [`Room 412 reasoning log. Patient: ${p.N}, ${p.age}.`, `Plan before the first round: ${plan ? plan.t : 'none recorded'}`];
+  S.log.forEach((L, r) => { if (!L || !L.verdict) return; const R = ROUNDS[r]; lines.push(`${R.time}. Flagged: ${L.flags.length ? L.flags.map((i) => fill(R.cues[i].t, p)).join('; ') : 'nothing'}. My MEWS: ${L.shown ? 'shown to me' : sumScores(L.scores)} (table gives ${A[r].total}). Action: ${ACTION_SHORT[L.action]}. Main reason: ${WHYS.find((x) => x.k === L.why).t}. Confidence: ${CONF[L.conf]}.${L.note ? ' Note: ' + L.note : ''}`); });
+  lines.push(S.calledBy === 'charge' ? 'Rapid response was called by the charge nurse at 14:00.' : `I called rapid response at ${ROUNDS[S.called].time}.`);
+  return lines.join('\n');
+}
+function vThinking() {
+  const plan = PLANS.find((x) => x.k === S.plan), count = {};
+  const rows = S.log.map((L, r) => { if (!L || !L.verdict) return ''; count[L.why] = (count[L.why] || 0) + 1; return `<tr><td><b>${ROUNDS[r].time}</b></td><td>${L.shown ? 'shown' : sumScores(L.scores)} / ${A[r].total}</td><td>${WHYS.find((x) => x.k === L.why).short}</td><td>${CONF[L.conf]}</td><td>${ACTION_SHORT[L.action]}</td></tr>`; }).join('');
+  const notes = S.log.map((L, r) => L && L.note ? `<li><b>${ROUNDS[r].time}</b> \u201c${esc(L.note)}\u201d</li>` : '').join('');
+  const used = WHYS.filter((x) => count[x.k]).map((x) => `${x.short} (${count[x.k]})`).join(', ');
+  return `<h3>Your thinking, round by round</h3>
+    <div class="tw"><table class="think"><thead><tr><th>Time</th><th>Your MEWS / table</th><th>Main reason</th><th>Sure?</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p>Your plan at 07:10: ${plan ? plan.t.toLowerCase().replace(/\.$/, '') : 'none recorded'}. Reasons you gave: ${used}.</p>
+    ${notes ? `<ul class="notes">${notes}</ul>` : ''}
+    <div class="row" style="margin:0 0 6px"><button class="btn sm" data-act="copyLog">Copy my reasoning log</button><span id="copied" class="hint" role="status"></span></div>
+    <p class="hint">The log is text you can paste into an assignment. Notes are not graded by this page.</p>`;
 }
 function verdictText(r) {
   const L = S.log[r], a = A[r], v = L.verdict, R = ROUNDS[r], nCue = R.cues.filter((c) => c.flag).length;
@@ -207,7 +260,7 @@ function tally() {
   return { cueHit, cueAll, falseFlag, par, parAll, sb };
 }
 function chartSvg() {
-  const w = 400, h = 190, x0 = 34, x1 = 388, y0 = 158, y1 = 14, X = (hr) => x0 + (hr - 8) / 6 * (x1 - x0), Y = (m) => y0 - m / 9 * (y0 - y1);
+  const w = 400, h = 190, x0 = 34, x1 = 376, y0 = 158, y1 = 14, X = (hr) => x0 + (hr - 8) / 6 * (x1 - x0), Y = (m) => y0 - m / 9 * (y0 - y1);
   const pts = ROUNDS.map((r, i) => [X(TIMES[i]), Y(A[i].total)]), c = S.called;
   const seg = (a, b, dash) => `<polyline points="${pts.slice(a, b + 1).map((p) => p.join(',')).join(' ')}" fill="none" stroke="#7fe3d4" stroke-width="2.5" ${dash ? 'stroke-dasharray="5 5" opacity=".6"' : ''}/>`;
   return `<svg id="chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="MEWS at each round: ${ROUNDS.map((r, i) => r.time + ' ' + A[i].total).join(', ')}. You called at ${ROUNDS[c].time}.">
@@ -229,6 +282,7 @@ function vDebrief() {
       <li class="${t.parAll && t.par === t.parAll ? 'ok' : ''}"><span class="mark">2</span><div><b>Analyze cues</b><small>${t.parAll ? `${t.par} of ${t.parAll} MEWS parameter scores matched the published table.` : 'Scores were shown, not entered.'}</small></div></li>
       <li><span class="mark">3</span><div><b>Take action</b><small>${acts}. SBAR: ${t.sb} of 4 parts labeled as AHRQ defines them.</small></div></li>
     </ul>
+    ${vThinking()}
     <h3>What MEWS did not count</h3>
     <ul>
       <li>Oxygen saturation went from 97% to ${R.v.spo2}%. Urine went from 220 mL to ${R.v.urine4h} mL over 4 hours. Neither is in MEWS. ${cite('subbe')}</li>
@@ -243,15 +297,28 @@ function vDebrief() {
       <li>Hospitals use different versions of MEWS and different trigger scores. The 5 here is from one UK hospital in 2000. ${cite('subbe')}</li>
     </ul>
     <p class="src">The vitals are written for this demo and model early sepsis after abdominal surgery. What the team does next is outside the demo. No nurse educator has reviewed this script.</p>
-    <div class="row"><button class="btn pri" data-act="again">Play again with another patient</button><button class="btn" data-act="about">Sources and method</button></div>`;
+    <div class="row"><button class="btn pri" data-act="again">Play again with another patient</button><button class="btn" data-act="faq">Questions students ask</button><button class="btn" data-act="about">Sources and method</button></div>`;
 }
 function vMews() {
+  const ex = { hr: 118, sbp: 96, dbp: 60, rr: 22, temp: 38.3, avpu: 'A' }, m = mews(ex);
+  const cols = [3, 2, 1, 0, 1, 2, 3];
   return `<h2 id="aboutH">How MEWS works</h2>
-  <p>The Modified Early Warning Score gives each of five vitals 0 to 3 points. Add the five numbers. A higher total means a sicker patient.</p>
-  <div class="tw"><table class="mews"><thead><tr><th>Vital</th><th>Points</th></tr></thead><tbody>${PARAMS.map((q) => `<tr><td><b>${q.label}</b></td><td>${CHART[q.k]}</td></tr>`).join('')}</tbody></table></div>
+  <ol class="steps3"><li><b>Find the box.</b> For each of the five vitals, find the box that holds your patient's value.</li><li><b>Read the points.</b> The column heading is the points for that vital. The middle column is 0.</li><li><b>Add the five.</b> The total is the MEWS. Check it against the unit policy.</li></ol>
+  <div class="tw"><table class="grid"><thead><tr><th>Points</th>${cols.map((c, i) => `<th class="c${c}${i === 3 ? ' mid' : ''}">${c}</th>`).join('')}</tr></thead>
+  <tbody>${GRID.map((row) => `<tr><th>${row[0]}</th>${row.slice(1).map((v, i) => `<td class="${v ? 'c' + cols[i] : 'nil'}${i === 3 ? ' mid' : ''}">${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  <p class="hint">Low values are on the left and high values on the right. An empty box means no value earns that score.</p>
+  <h3>Worked example (not this patient)</h3>
+  <div class="tw"><table class="ex"><tbody>
+    <tr><td>Heart rate 118</td><td>${m.parts.hr}</td></tr><tr><td>Blood pressure 96/60 (use the top number)</td><td>${m.parts.sbp}</td></tr><tr><td>Respiratory rate 22</td><td>${m.parts.rr}</td></tr><tr><td>Temperature ${tempStr(ex.temp)}</td><td>${m.parts.temp}</td></tr><tr><td>Alert</td><td>${m.parts.avpu}</td></tr>
+    <tr class="sum"><td>MEWS</td><td>${m.total}</td></tr></tbody></table></div>
   <h3>Unit policy in this demo</h3>
-  <ul><li>0 to 2: routine checks.</li><li>3 or 4: tell the charge nurse and recheck within the hour.</li><li>5 or more: call the rapid response team.</li><li>Any time: call if you are worried about the patient.</li></ul>
-  <p class="src">Table: ${cite('subbe')}. Oxygen saturation and urine output are not in this version of MEWS.</p>`;
+  <ul class="pol"><li><b>0 to 2</b><span>Routine checks.</span></li><li><b>3 or 4</b><span>Tell the charge nurse. Recheck within the hour.</span></li><li><b>5 or more</b><span>Call the rapid response team.</span></li><li><b>Any time</b><span>Call if you are worried about the patient.</span></li></ul>
+  <p class="src">Table: ${cite('subbe')}. Oxygen saturation and urine output are not in this version of MEWS. Hospitals use different versions and trigger scores.</p>`;
+}
+function vFaq() {
+  return `<h2 id="aboutH">Questions students ask</h2>
+  <p class="hint">Each answer states what a source says. Your hospital's policy decides what applies on your unit.</p>
+  ${FAQ(cite).map(([q, a], i) => `<details ${i === 0 ? 'open' : ''}><summary>${q}</summary><p>${a}</p></details>`).join('')}`;
 }
 function vAbout() {
   return `<h2 id="aboutH">About Room 412</h2>
@@ -287,13 +354,16 @@ function nextFromFb() {
 function startSbar(r, by) { S.called = r; S.calledBy = by; S.sbar = [null, null, null, null]; S.sbarDone = false; go('sbar'); }
 const ACT = {
   begin: () => go('choose'), choose: () => go('choose'), report: () => go('report'),
+  prep: () => go('prep'), oiCheck: () => { S.oiDone = true; render(); }, oiShow: () => { S.oi = OI.map((x) => x.k); S.oiDone = true; render(); },
+  faq: () => { $('#aboutBody').innerHTML = vFaq(); $('#modal').hidden = false; $('#modalClose').focus(); },
+  copyLog: () => { const t = logText(), el = $('#copied'); const fail = () => { el.textContent = ''; const ta = document.createElement('textarea'); ta.className = 'logta'; ta.value = t; ta.readOnly = true; ta.rows = 8; el.parentNode.after(ta); ta.select(); }; try { navigator.clipboard.writeText(t).then(() => { el.textContent = 'Copied.'; }, fail); } catch (e) { fail(); } },
   startRounds: () => { S.log = []; S.called = null; go('round', 0, 'look'); },
   toScore: () => { S.sub = 'score'; go('round'); }, toAct: () => { S.sub = 'act'; go('round'); }, toFb: commitAction,
   showScore: () => { const L = S.log[S.r]; L.scores = { ...A[S.r].parts }; L.shown = true; render(); },
   next: nextFromFb,
   sbarCheck: () => { S.sbarDone = true; render(); }, sbarShow: () => { S.sbar = SBAR(P(), ROUNDS[S.called], 0).map((x) => x.k); S.sbarDone = true; S.sbarShown = true; render(); },
   debrief: () => go('debrief'),
-  again: () => { S.p = (S.p + 1) % PATIENTS.length; room.setPatient(P()); S.seed += 1; S.log = []; S.called = null; go('choose'); },
+  again: () => { S.oi = [null, null, null, null]; S.oiDone = false; S.plan = null; S.p = (S.p + 1) % PATIENTS.length; room.setPatient(P()); S.seed += 1; S.log = []; S.called = null; go('choose'); },
   about: () => { $('#aboutBody').innerHTML = vAbout(); $('#modal').hidden = false; $('#modalClose').focus(); },
   mews: () => { $('#aboutBody').innerHTML = vMews(); $('#modal').hidden = false; $('#modalClose').focus(); },
   closeAbout: () => { $('#modal').hidden = true; },
@@ -307,7 +377,10 @@ panelBody.addEventListener('change', (e) => {
   if (t.name === 'pt') { S.p = +t.value; room.setPatient(P()); return; }
   if (t.name === 'cue') { const i = +t.value; L.flags = t.checked ? [...new Set([...L.flags, i])] : L.flags.filter((x) => x !== i); return; }
   if (t.name.startsWith('s_')) { L.scores[t.name.slice(2)] = +t.value; L.shown = false; $('#tot').textContent = allScored(L.scores) ? sumScores(L.scores) : '·'; panelBody.querySelector('[data-act=toAct]').disabled = !allScored(L.scores); return; }
-  if (t.name === 'act') { L.action = t.value; panelBody.querySelector('[data-act=toFb]').disabled = false; return; }
+  if (t.name === 'act' || t.name === 'why' || t.name === 'conf') { if (t.name === 'act') L.action = t.value; if (t.name === 'why') L.why = t.value; if (t.name === 'conf') L.conf = +t.value; panelBody.querySelector('[data-act=toFb]').disabled = !(L.action && L.why && L.conf); return; }
+  if (t.name === 'note') { L.note = t.value.trim(); return; }
+  if (t.name === 'plan') { S.plan = t.value; panelBody.querySelector('[data-act=startRounds]').disabled = false; return; }
+  if (t.name.startsWith('oi_')) { S.oi[+t.name.slice(3)] = t.value; panelBody.querySelector('[data-act=oiCheck]').disabled = !S.oi.every(Boolean); return; }
   if (t.name.startsWith('sb_')) { S.sbar[+t.name.slice(3)] = t.value; panelBody.querySelector('[data-act=sbarCheck]').disabled = !S.sbar.every(Boolean); }
 });
 
@@ -327,7 +400,7 @@ function tick(dt) {
 
 // ---------- test hook ----------
 window.__demo = {
-  state: () => ({ step: S.step, r: S.r, sub: S.sub, p: P().id, view: S.view, called: S.called, calledBy: S.calledBy, clock: +S.clock.toFixed(2), disp: { ...disp }, log: S.log.map((L) => L && ({ ...L })), tally: S.called != null ? tally() : null }),
+  state: () => ({ step: S.step, r: S.r, sub: S.sub, p: P().id, view: S.view, called: S.called, calledBy: S.calledBy, clock: +S.clock.toFixed(2), disp: { ...disp }, log: S.log.map((L) => L && ({ ...L })), plan: S.plan, oi: S.oi, logText: S.called != null ? logText() : null, tally: S.called != null ? tally() : null }),
   model: () => ROUNDS.map((r, i) => ({ time: r.time, ...r.v, f: cToF(r.v.temp), parts: A[i].parts, total: A[i].total, need: A[i].need, support: A[i].support, crit: A[i].crit, verdicts: ACTIONS.map((x) => judge(x.k, A[i])) })),
   go, act: (k) => ACT[k](), view: (n) => setView(n, true), patient: (i) => { S.p = i; room.setPatient(P()); render(); },
   flag: (arr) => { S.log[S.r].flags = arr; }, flagKey: () => { S.log[S.r].flags = ROUNDS[S.r].cues.map((c, i) => c.flag ? i : -1).filter((i) => i >= 0); },
