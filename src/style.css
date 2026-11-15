@@ -127,3 +127,4 @@ table.grid td.nil{background:rgba(255,255,255,.03)}
 table.ex{max-width:460px}table.ex td{text-align:left;font-size:15px}table.ex td:last-child{text-align:right;font-weight:700;width:3em}table.ex tr.sum td{font-weight:700;color:var(--cy);font-size:17px;border-bottom:0}
 details{border-bottom:1px solid rgba(150,225,215,.16);padding:4px 0}summary{cursor:pointer;font:600 17px/1.35 var(--ui);padding:10px 0}details p{margin:0 0 14px!important;font-size:15.5px!important}
 @media (max-width:819px){#trail{display:none}#say{bottom:calc(45dvh + 8px)}}
+@media (max-width:819px){#soundBtn{display:none}}
