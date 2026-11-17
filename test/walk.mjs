@@ -27,7 +27,7 @@ await act('next'); await flagKey(); await shot('r2-look'); await act('toScore');
 await act('next'); await pick('cue', 0); await D(() => __demo.view('face')); await shot('r3-look-face'); await act('toScore'); await act('showScore'); await shot('r3-score-shown'); await act('toAct'); await pick('act', 'charge'); await act('toFb'); await shot('r3-fb');
 await act('next'); await D(() => __demo.view('bed')); await flagKey(); await shot('r4-look'); await act('toScore'); await scoreKey(); await act('toAct'); await pick('act', 'rrt'); await act('toFb'); await shot('r4-fb');
 await act('next'); await pick('sb_0', 'S'); await pick('sb_1', 'B'); await pick('sb_2', 'R'); await pick('sb_3', 'A'); await shot('sbar'); await act('sbarCheck'); await shot('sbar-checked');
-await act('debrief'); await shot('debrief'); const s1 = await D(() => __demo.state());
+await act('debrief'); await shot('debrief'); await D(() => { const e = [...document.querySelectorAll('h3,h4')].find((x) => x.textContent.trim() === 'Effort'); if (!e) throw new Error('no effort heading'); e.scrollIntoView({ block: 'center' }); }); await wait(500); await p.screenshot({ path: `test/out/${tag}-effort.png` }); const s1 = await D(() => __demo.state());
 await D(() => { document.querySelector('#panel').scrollTop = 99999; }); await shot('debrief-bottom');
 await act('about'); await shot('about'); await act('closeAbout');
 // second path through the hook: unsupported early call, then never call

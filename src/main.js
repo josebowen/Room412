@@ -1,4 +1,5 @@
 // Room 412: state machine, bedside monitor, panels, camera and test hook.
+import { EF } from './effort.js';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -213,11 +214,13 @@ function renderTrail() {
   const rows = S.log.map((L, r) => L && L.verdict ? `<li><b>${ROUNDS[r].time}</b><span>MEWS ${L.shown ? A[r].total : sumScores(L.scores)}</span><span>${ACTION_SHORT[L.action]}</span><em>${WHYS.find((x) => x.k === L.why).short} · ${CONF[L.conf].toLowerCase()}</em></li>` : '').join('');
   el.innerHTML = rows ? `<p>Your reasoning so far</p><ol>${rows}</ol>` : ''; el.hidden = !rows || S.step === 'title' || S.step === 'choose';
 }
+EF.watch(() => { const s = S.step; if (s === 'choose' || s === 'prep') return 'Planning before the first round'; if (s === 'round' && S.sub !== 'fb') return ROUNDS[S.r].time + ': ' + ({ look: 'reading the room', score: 'scoring the vitals', act: 'choosing what to do' }[S.sub] || S.sub); if (s === 'sbar' && !S.sbarDone) return 'Writing the handoff'; return null; });
 function logText() {
   const p = P(), plan = PLANS.find((x) => x.k === S.plan);
   const lines = [`Room 412 reasoning log. Patient: ${p.N}, ${p.age}.`, `Plan before the first round: ${plan ? plan.t : 'none recorded'}`];
   S.log.forEach((L, r) => { if (!L || !L.verdict) return; const R = ROUNDS[r]; lines.push(`${R.time}. Flagged: ${L.flags.length ? L.flags.map((i) => fill(R.cues[i].t, p)).join('; ') : 'nothing'}. My MEWS: ${L.shown ? 'shown to me' : sumScores(L.scores)} (table gives ${A[r].total}). Action: ${ACTION_SHORT[L.action]}. Main reason: ${WHYS.find((x) => x.k === L.why).t}. Confidence: ${CONF[L.conf]}.${L.note ? ' Note: ' + L.note : ''}`); });
   lines.push(S.calledBy === 'charge' ? 'Rapid response was called by the charge nurse at 14:00.' : `I called rapid response at ${ROUNDS[S.called].time}.`);
+  { const t = EF.text(); if (t) lines.push(t); }
   return lines.join('\n');
 }
 function vThinking() {
@@ -230,7 +233,7 @@ function vThinking() {
     <p>Your plan at 07:10: ${plan ? plan.t.toLowerCase().replace(/\.$/, '') : 'none recorded'}. Reasons you gave: ${used}.</p>
     ${notes ? `<ul class="notes">${notes}</ul>` : ''}
     <div class="row" style="margin:0 0 6px"><button class="btn sm" data-act="copyLog">Copy my reasoning log</button><span id="copied" class="hint" role="status"></span></div>
-    <p class="hint">The log is text you can paste into an assignment. Notes are not graded by this page.</p>`;
+    <p class="hint">The log is text you can paste into an assignment. Notes are not graded by this page.</p>${EF.html()}`;
 }
 function verdictText(r) {
   const L = S.log[r], a = A[r], v = L.verdict, R = ROUNDS[r], nCue = R.cues.filter((c) => c.flag).length;
@@ -344,7 +347,7 @@ function vAbout() {
 }
 
 // ---------- actions ----------
-function commitAction() { const L = S.log[S.r]; L.verdict = judge(L.action, A[S.r]); S.sub = 'fb'; go('round'); }
+function commitAction() { const L = S.log[S.r]; L.verdict = judge(L.action, A[S.r]); EF.resolved(); { const ok = L.verdict !== 'below' && L.verdict !== 'unsupported'; EF.mark({ ok, conf: L.conf ? L.conf - 1 : undefined }); if (!ok) EF.wrong(); } S.sub = 'fb'; go('round'); }
 function nextFromFb() {
   const L = S.log[S.r];
   if (L.action === 'rrt' && L.verdict !== 'unsupported') return startSbar(S.r, 'you');
